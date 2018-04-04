@@ -1,0 +1,10 @@
+Run ExampleSimulationParametersControllerUser and see how the following inputs 
+are translated to method calls:
+p
+a true
+a false
+i true
+atomic true
+e
+l false
+q 0

@@ -1,0 +1,10 @@
+package consensus;
+
+public enum ReplicationSynchrony {
+	ASYNCHRONOUS,
+	TWO_SYNCHRONOUS,
+	MAJORITY_SYNCHRONOUS,
+	ALL_SYNCHRONOUS,
+	CUSTOM_SYNCHRONOUS
+
+}
