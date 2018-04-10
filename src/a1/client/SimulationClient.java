@@ -9,35 +9,54 @@ import util.trace.factories.FactoryTraceUtility;
 import util.trace.misc.ThreadDelayed;
 import util.trace.port.consensus.ConsensusTraceUtility;
 import util.trace.port.nio.NIOTraceUtility;
+import util.trace.port.rpc.gipc.GIPCRPCTraceUtility;
 import util.trace.port.rpc.rmi.RMITraceUtility;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 
-import a1.common.message.CTS_Proposal;
 import a1.common.message.Message;
-import a1.common.message.MessageTypeInterpreter.ProposalType;
+import a1.common.message.Message.MsgType;
+import a1.common.message.Message.ProposalType;
+import a1.common.Util;
 import a1.common.InitialConfigurations.BroadcastMode;
-import a1.util.Util;
 import assignments.util.MiscAssignmentUtils;
 import assignments.util.inputParameters.ASimulationParametersController;
 import assignments.util.mainArgs.ClientArgsProcessor;
 import main.BeauAndersonFinalProject;
 import stringProcessors.HalloweenCommandProcessor;
 
-@Tags({DistributedTags.CLIENT, DistributedTags.RMI, DistributedTags.NIO})
+@Tags({DistributedTags.CLIENT, DistributedTags.RMI, DistributedTags.GIPC, DistributedTags.NIO})
 public class SimulationClient implements PropertyChangeListener {
-
+	
 	private HalloweenCommandProcessor simulation;
 	private ClientCommunicator communicator;
 	private SimulationParametersController commandProcessor;
 	private ArrayList<String> experimentLog;
-	private String clientName;
+	
+	protected String clientName;
+	protected int gipcPort;
+	protected String headless;
+	protected String registryHost;
+	protected int registryPort;
+	protected String serverHost;
+	protected int serverPort;
 
-	public SimulationClient(String aClientName) {
-		clientName = aClientName;
+	public SimulationClient(String[] args) {
+		getArgs(args); 
 		experimentLog = new ArrayList<String>();
+	}
+	
+	private void getArgs(String[] args) {
+		clientName = ClientArgsProcessor.getClientName(args); 
+		gipcPort = ClientArgsProcessor.getGIPCPort(args);
+		headless = ClientArgsProcessor.getHeadless(args);
+		registryHost = ClientArgsProcessor.getRegistryHost(args); 
+		registryPort = ClientArgsProcessor.getRegistryPort(args);
+		serverHost = ClientArgsProcessor.getServerHost(args);
+		serverPort = ClientArgsProcessor.getServerPort(args);
+		MiscAssignmentUtils.setHeadless(ClientArgsProcessor.getHeadless(args));
 	}
 
 	public String getClientName() {
@@ -67,18 +86,20 @@ public class SimulationClient implements PropertyChangeListener {
 	
 	public void setupGIPCCommunicator() {
 		GIPCClientCommunicator gipcComm = (GIPCClientCommunicator) communicator.getSubCommunicatorOfType(IPCMechanism.GIPC);
-		gipcComm.exportObjects();
+		String id = communicator.getRpcId(); 
+		gipcComm.setClientManagerId(id);
 		gipcComm.acquireProxies();
+		gipcComm.exportObjects();
 	}
 
 	private void setupRMICommunicator() {
 		RMIClientCommunicator rmiComm = (RMIClientCommunicator) communicator.getSubCommunicatorOfType(IPCMechanism.RMI);
-		rmiComm.exportObjects();
 		rmiComm.acquireProxies();
+		rmiComm.exportObjects();
 	}
 	
-	private ClientCommunicator initAndGetCommunicator(String aServerHost, int aServerPort, int gipcPort) {
-		return new ClientCommunicator(this, aServerHost, aServerPort, gipcPort, simulation);
+	private ClientCommunicator initAndGetCommunicator() {
+		return new ClientCommunicator(this, simulation, serverHost, serverPort, registryHost, registryPort, gipcPort);
 	}
 
 	private HalloweenCommandProcessor initAndGetSimulation() {
@@ -109,18 +130,22 @@ public class SimulationClient implements PropertyChangeListener {
 		RMITraceUtility.setTracing();
 		ConsensusTraceUtility.setTracing();
 		ThreadDelayed.enablePrint();
+		GIPCRPCTraceUtility.setTracing();
 	}
 
-	private void initialize(String aServerHost, int aServerPort, String aClientName, int gipcPort) {
+	private void initialize() {
 		setupTracing();
 		setupArgsProcessor();
 		simulation = initAndGetSimulation();
-		communicator = initAndGetCommunicator(aServerHost, aServerPort, gipcPort);
-		setupClientStateFactory(); //MUST be done before setting up rmiCommunicator. sets communicator and client properties
-		communicator.createDistributedObjects(simulation); //MUST be done after setting up client state factory
-		communicator.notifySubCommunicatorsOfDistributedObjects();
+		communicator = initAndGetCommunicator();
+		ClientCommunicatorFactory.setCommunicator(communicator);
+		//MUST be done AFTER creating communicator so GIPC and RMI communicators are aware of the client state object. 
+		setupClientStateFactory();
+		//MUST be done after setting up client state factory
+		communicator.createDistributedObjects(simulation); 
+		communicator.notifyRpcCommunicatorsOfDistributedObjects();
 		setupRMICommunicator(); 
-		setupGIPCCommunicator(); //MUST be done after setting up rmiCommunicator. relies on id assigned by server returned as rmi callback 
+		setupGIPCCommunicator();
 		startProcessingArgs();
 	}
 
@@ -130,33 +155,25 @@ public class SimulationClient implements PropertyChangeListener {
 		System.out.println("PROP CHANGE: " + Util.getBroadcastModeFromState().name());
 		BroadcastMode currBMode = Util.getBroadcastModeFromState(); 
 		if (currBMode != BroadcastMode.LOCAL) {
-			String newCommand = (String) evt.getNewValue();
+			String cmd = (String) evt.getNewValue();
 			ClientState state = ClientStateFactory.getState(); 
-			Message msg = new CTS_Proposal(
-					ProposalType.SimulationCommand, 
-					currBMode, 
-					state.getIPCMechanism(), 
-					state.getConsensusAlgorithm());
-			msg.setCommandToExecute(newCommand);
+			Message msg = new Message(MsgType.CTS_Proposal); 
+			msg.setProposalType(ProposalType.SimulationCommand);
+			msg.setCommandToExecute(cmd);
 			if (state.getIPCMechanism() != IPCMechanism.NIO) {
-				msg.setRpcRegistryKey(communicator.getRpcId());
+				msg.setRpcRegistryKey(communicator.getRpcId()); //applicable for RMI and GIPC 
 			}
 			communicator.sendMessageToServer(msg);
 		}
 	}
 
-	private static void launchClient(String aServerHost, int aServerPort, String aClientName, int gipcPort) {
-		(new SimulationClient(aClientName)).initialize(aServerHost, aServerPort, aClientName, gipcPort);
+	private static void launchClient(String[] args) {
+		(new SimulationClient(args)).initialize();
 	}
 
+//	(String clientName, int gipcPort, String headless, String registryHost, int registryPort, String serverHost, int serverPort)
 	public static void main(String[] args) {
-		args = ClientArgsProcessor.removeEmpty(args);
-		MiscAssignmentUtils.setHeadless(ClientArgsProcessor.getHeadless(args));
-		String 	serverHost = ClientArgsProcessor.getServerHost(args); 
-		int 		serverPort = ClientArgsProcessor.getServerPort(args);
-		String 	clientName = ClientArgsProcessor.getClientName(args); 
-		int 		gipcPort = ClientArgsProcessor.getGIPCPort(args); 
-		launchClient(serverHost, serverPort, clientName, gipcPort);
+		launchClient(ClientArgsProcessor.removeEmpty(args));
 	}
 	
 }

@@ -6,6 +6,7 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import a1.common.Util;
 import a1.common.InitialConfigurations.BroadcastMode;
 import a1.common.message.CTS_Proposal;
 import a1.common.message.CTS_ProposalResponse;
@@ -15,7 +16,6 @@ import a1.common.message.STC_ProposalExecute;
 import a1.common.message.MessageTypeInterpreter.ProposalType;
 import a1.common.nio.NIOByteBufferWrapper;
 import a1.common.rmi.DistributedClientManager;
-import a1.util.Util;
 import inputport.nio.manager.NIOManagerFactory;
 import util.interactiveMethodInvocation.ConsensusAlgorithm;
 import util.interactiveMethodInvocation.IPCMechanism;
@@ -37,7 +37,7 @@ public class NIOServerReadProcessor implements Runnable {
 	public void processMessage(Message clientMsg, SocketChannel originChannel) {
 		ServerCommunicator comm = server.getCommunicator(); 
 		Message msg = comm.generateResponseMessage(clientMsg, commandQueue.size()); 
-		if (msg == null) { return; }
+		if (msg == null) { return; } //we are not waiting for a message at this time 
 		comm.processIncomingMessage(clientMsg, originChannel);
 	}
 	
@@ -51,10 +51,6 @@ public class NIOServerReadProcessor implements Runnable {
 				byte[] arr = new byte[buf.remaining()];
 				buf.get(arr);
 				Message msg = Util.deserializeMessage(arr);
-				if (msg == null) {
-					System.out.println("UNABLE TO DESERIALIZE MESSAGE ON SERVER SIDE");
-					continue; 
-				}
 				processMessage(msg, wrapper.getOriginSocketChannel()); 
 			} catch (InterruptedException e) { 
 				e.printStackTrace(); 

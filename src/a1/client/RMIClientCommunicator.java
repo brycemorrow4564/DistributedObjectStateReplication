@@ -6,33 +6,33 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
 import a1.common.Communicator;
+import a1.common.Util;
 import a1.common.InitialConfigurations.BroadcastMode;
 import a1.common.message.Message;
-import a1.common.message.MessageTypeInterpreter.ProposalType;
-import a1.common.RPCCommunicator;
-import a1.common.rmi.ADistributedClientManager;
-import a1.common.rmi.ADistributedServerRelayer;
 import a1.common.rmi.DistributedClientManager;
-import a1.common.rmi.DistributedServerRegistrar;
 import a1.common.rmi.DistributedServerRelayer;
-import a1.util.Util;
-import stringProcessors.HalloweenCommandProcessor;
-import util.interactiveMethodInvocation.IPCMechanism;
+import util.trace.port.consensus.ProposalMade;
+import util.trace.port.consensus.RemoteProposeRequestSent;
 import util.trace.port.rpc.rmi.RMIObjectLookedUp;
 import util.trace.port.rpc.rmi.RMIRegistryLocated;
+import util.trace.port.consensus.communication.CommunicationStateNames;
 
-public class RMIClientCommunicator implements Communicator, RPCCommunicator {
+public class RMIClientCommunicator implements Communicator {
 	
-	private static Registry rmiRegistry; 
+	protected Registry rmiRegistry; 
+	protected DistributedClientManager clientManager; 
+	protected DistributedServerRelayer serverRelayer; 
+	protected String clientManagerId;
 	
-	private static DistributedClientManager clientManager; //add to registry 
-	private static DistributedServerRelayer serverRelayer; //acquire reference to 
+	protected String registryHost; 
+	protected int registryPort; 
 	
-	private static String managerId;
-	
-	public RMIClientCommunicator() {
-		rmiRegistry 	= findRegistry(); 
-		rmiConnectToServer();  
+	public RMIClientCommunicator(String registryHost, int registryPort) {
+		try { 
+			rmiRegistry = LocateRegistry.getRegistry(registryHost, registryPort);
+			RMIRegistryLocated.newCase(this, registryHost, registryPort, rmiRegistry);
+		} 
+		catch (RemoteException e) { e.printStackTrace(); }
 	}
 	
 	public void setClientManager(DistributedClientManager aClientManager) {
@@ -40,45 +40,39 @@ public class RMIClientCommunicator implements Communicator, RPCCommunicator {
 	}
 	
 	public String getServerSpecifiedId() {
-		return managerId; 
+		return clientManagerId; 
+	}
+	
+	private void traceRemoteProposalRequestSend(Message msg) {
+		switch (msg.getType()) {
+			case MetaStateChange: 
+				RemoteProposeRequestSent.newCase(this, CommunicationStateNames.BROADCAST_MODE, -1, msg.getBModeToSet() == BroadcastMode.ATOMIC);
+				RemoteProposeRequestSent.newCase(this, CommunicationStateNames.IPC_MECHANISM, -1, msg.getIpcMechToSet());
+				break;
+			case SimulationCommand: 
+				RemoteProposeRequestSent.newCase(this, CommunicationStateNames.COMMAND, -1, msg.getCommandToExecute());
+				break; 
+			default:
+		}
 	}
 	
 	public void sendMessageToServer(Message msg) {
-		util.misc.ThreadSupport.sleep(1); 
 		try {
-			msg.setRpcRegistryKey(managerId);
+			msg.setRpcRegistryKey(clientManagerId); 
+			traceRemoteProposalRequestSend(msg); 
+			util.misc.ThreadSupport.sleep(Util.getSendDelay()); 
 			serverRelayer.passMsgToServer(msg);
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}
 	}
-	
-	private void rmiConnectToServer() {
-		try {
-			DistributedServerRegistrar serverRegistrarStub = (DistributedServerRegistrar) rmiRegistry.lookup("ServerRegistrar");
-			RMIObjectLookedUp.newCase(this, serverRegistrarStub, "ServerRegistar", rmiRegistry);
-			util.misc.ThreadSupport.sleep(1);
-			managerId = serverRegistrarStub.registerClientsRemoteObjects(); 
-			System.out.println(managerId.substring(0, 7) + " has been registered with the server");
-		} catch (Exception e) {
-			e.printStackTrace();
-		} 
-	}
-	
-	private Registry findRegistry() {
-		try { 
-			Registry registry = LocateRegistry.getRegistry(); 
-			RMIRegistryLocated.newCase(this, "localhost", 1099, rmiRegistry);
-			return registry; 
-		} 
-		catch (RemoteException e) { e.printStackTrace(); }
-		return null; 
-	}
-	
+
 	public void exportObjects() {
 		try {
 			UnicastRemoteObject.exportObject(clientManager, 0);
-			rmiRegistry.rebind(managerId, clientManager);
+			String myId = serverRelayer.rmiClientJoin(clientManager); 
+			this.clientManagerId = myId;
+			System.out.println(clientManagerId + " has registered with the server via RMI");
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}

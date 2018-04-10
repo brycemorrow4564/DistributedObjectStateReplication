@@ -8,7 +8,7 @@ public class ServerStateFactory {
 	public static void init() {}
 	
 	public static void setServer(SimulationServer server) {
-		server = server;
+		ServerStateFactory.server = server;
 	}
 	
 	public static ServerState getState() {

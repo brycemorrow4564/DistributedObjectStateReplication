@@ -7,15 +7,11 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import a1.common.InitialConfigurations;
-import a1.common.message.CTS_Proposal;
-import a1.common.message.CTS_ProposalResponse;
+import a1.common.Util;
+import a1.common.message.Message.ProposalType;
 import a1.common.message.Message;
-import a1.common.message.STC_ProposalAcceptRequest;
-import a1.common.message.STC_ProposalExecute;
-import a1.common.message.MessageTypeInterpreter.ProposalType;
 import a1.common.Communicator;
 import a1.common.nio.NIOByteBufferWrapper;
-import a1.util.Util;
 import assignments.util.MiscAssignmentUtils;
 import inputport.nio.manager.AScatterGatherSelectionManager;
 import inputport.nio.manager.NIOManagerFactory;
@@ -43,15 +39,7 @@ public class NIOClientCommunicator implements SocketChannelReadListener,
 	}
 
 	public void sendMessageToServer(Message msg) {
-		ByteBuffer serializedMsg = null; 
-	    try {
-			CTS_Proposal aMsg = (CTS_Proposal) msg;
-			serializedMsg = ByteBuffer.wrap(Util.serializeMessage(aMsg)); 
-		} catch (Exception e) {}
-	    try {
-			CTS_ProposalResponse aMsg = (CTS_ProposalResponse) msg;
-			serializedMsg = ByteBuffer.wrap(Util.serializeMessage(aMsg)); 
-		} catch (Exception e) {}
+		ByteBuffer serializedMsg = ByteBuffer.wrap(Util.serializeMessage(msg)); 
 		NIOManagerFactory.getSingleton().write(socketChannel, serializedMsg);
 	}
 	
@@ -65,7 +53,7 @@ public class NIOClientCommunicator implements SocketChannelReadListener,
 	}
 
 	public void connected(SocketChannel aSocketChannel) {
-		System.out.println("Our client is connected to the server");
+		System.out.println("Our client is connected to the server via NIO");
 		NIOManagerFactory.getSingleton().addReadListener(aSocketChannel, this);
 	}
 	

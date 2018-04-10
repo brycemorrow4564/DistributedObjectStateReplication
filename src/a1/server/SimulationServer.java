@@ -1,40 +1,38 @@
 package a1.server;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-
-import a1.common.InitialConfigurations.BroadcastMode;
-import a1.common.message.CTS_Proposal;
-import a1.common.message.Message;
-import a1.common.message.MessageTypeInterpreter.ProposalType;
-import a1.common.message.STC_ProposalExecute;
-import a1.util.Test;
-import a1.util.Util;
 import assignments.util.mainArgs.ServerArgsProcessor;
 import util.annotations.Tags;
-import util.interactiveMethodInvocation.ConsensusAlgorithm;
-import util.interactiveMethodInvocation.IPCMechanism;
 import util.tags.DistributedTags;
 import util.trace.bean.BeanTraceUtility;
 import util.trace.factories.FactoryTraceUtility;
 import util.trace.misc.ThreadDelayed;
 import util.trace.port.consensus.ConsensusTraceUtility;
 import util.trace.port.nio.NIOTraceUtility;
+import util.trace.port.rpc.gipc.GIPCRPCTraceUtility;
 import util.trace.port.rpc.rmi.RMITraceUtility;
 
-@Tags({DistributedTags.SERVER, DistributedTags.RMI, DistributedTags.NIO})
+@Tags({DistributedTags.SERVER, DistributedTags.RMI, DistributedTags.GIPC, DistributedTags.NIO})
 public class SimulationServer {
 	
-	private ServerCommunicator communicator;
+	protected ServerCommunicator communicator;
+	protected int gipcPort;  		 
+	protected String registryHost; 	
+	protected int registryPort; 
+	protected int nioPort; 			
 	
-	public SimulationServer(int nioPort, int gipcPort) {
+	public SimulationServer(String[] args) {
+		getArgs(args); 
 		ServerStateFactory.setServer(this);
-		communicator = new ServerCommunicator(this, nioPort, gipcPort);
+		communicator = new ServerCommunicator(this, nioPort, gipcPort, registryHost, registryPort);
 		setupTracing(); 
 	}	
+	
+	private void getArgs(String[] args) {
+		gipcPort = ServerArgsProcessor.getGIPCServerPort(args);
+		registryHost = ServerArgsProcessor.getRegistryHost(args); 
+		registryPort = ServerArgsProcessor.getRegistryPort(args);
+		nioPort = ServerArgsProcessor.getServerPort(args);
+	}
 	
 	public ServerCommunicator getCommunicator() { 
 		return communicator; 
@@ -47,15 +45,12 @@ public class SimulationServer {
 		RMITraceUtility.setTracing();
 		ConsensusTraceUtility.setTracing();
 		ThreadDelayed.enablePrint();
+		GIPCRPCTraceUtility.setTracing();
 	}
 
 	public static void main(String[] args) { 
 		args = ServerArgsProcessor.removeEmpty(args); 
-		int gipcPort 		= ServerArgsProcessor.getGIPCServerPort(args); //index 3
-		//String registryHost 	= ServerArgsProcessor.getRegistryHost(args); //index 1, for both rmi and gipc 
-		//int rmiRegistryPort 	= ServerArgsProcessor.getRegistryPort(args); //index 2, registry rmi port 
-		int nioPort 			= ServerArgsProcessor.getServerPort(args); //index 0, nio server port 
-		new SimulationServer(nioPort, gipcPort);
+		new SimulationServer(args);
 	}
 
 }

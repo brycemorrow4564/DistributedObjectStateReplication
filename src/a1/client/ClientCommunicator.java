@@ -2,6 +2,7 @@ package a1.client;
 
 import a1.common.Communicator;
 import a1.common.message.Message;
+import a1.common.message.Message.MsgType;
 import a1.common.rmi.ADistributedClientManager;
 import a1.common.rmi.DistributedClientManager;
 import stringProcessors.HalloweenCommandProcessor;
@@ -9,18 +10,16 @@ import util.interactiveMethodInvocation.IPCMechanism;
 
 public class ClientCommunicator {
 
-	//Communicator references
 	protected NIOClientCommunicator 		nioCommunicator; 
 	protected RMIClientCommunicator 		rmiCommunicator; 
 	protected GIPCClientCommunicator  	gipcCommunicator; 
-	
-	//Distributed object references 
 	protected DistributedClientManager 	clientManager; 
 	
-	public ClientCommunicator(SimulationClient client, String aServerHost, int aServerPort, int gipcPort, HalloweenCommandProcessor simulation) {
-		nioCommunicator 		= new NIOClientCommunicator(client, aServerHost, aServerPort); 
-		rmiCommunicator 		= new RMIClientCommunicator();
-		gipcCommunicator		= new GIPCClientCommunicator(gipcPort, rmiCommunicator.getServerSpecifiedId());
+	public ClientCommunicator(SimulationClient client, HalloweenCommandProcessor simulation, String serverHost, 
+			int serverPort, String registryHost, int registryPort, int gipcPort) {
+		nioCommunicator 		= new NIOClientCommunicator(client, serverHost, serverPort); 
+		rmiCommunicator 		= new RMIClientCommunicator(registryHost, registryPort);
+		gipcCommunicator		= new GIPCClientCommunicator(gipcPort, serverHost);
 	}	
 	
 	public String getRpcId() {
@@ -31,29 +30,35 @@ public class ClientCommunicator {
 		clientManager = new ADistributedClientManager(ClientStateFactory.getState(), simulation);
 	}
 	
-	public void notifySubCommunicatorsOfDistributedObjects() {
+	public void notifyRpcCommunicatorsOfDistributedObjects() {
 		rmiCommunicator.setClientManager(clientManager);
 		gipcCommunicator.setClientManager(clientManager);
 	}
 	
 	public void sendMessageToServer(Message msg) {
-		IPCMechanism mech = ClientStateFactory.getState().getIPCMechanism(); 
 		System.out.println("Client sending msg: \n" + msg.toString());
-		switch (mech) {
-			case NIO: 
-				nioCommunicator.sendMessageToServer(msg); 
-			case RMI: 
-				rmiCommunicator.sendMessageToServer(msg); 
-			case GIPC: 
-				gipcCommunicator.sendMessageToServer(msg); 
+		if (msg.getMsgType() == MsgType.CTS_Proposal) {
+			IPCMechanism mech = ClientStateFactory.getState().getIPCMechanism(); 
+			switch (mech) {
+				case NIO: nioCommunicator.sendMessageToServer(msg); break; 
+				case RMI: rmiCommunicator.sendMessageToServer(msg); break; 
+				case GIPC: gipcCommunicator.sendMessageToServer(msg); break; 
+			}
+		} else {
+			//MsgType.CTS_ProposalResponse
+			rmiCommunicator.sendMessageToServer(msg);	
 		}
 	}
 	
 	public Communicator getSubCommunicatorOfType(IPCMechanism mech) {
-		if 		(mech == IPCMechanism.NIO) 	{ return nioCommunicator; }
-		else if (mech == IPCMechanism.RMI) 	{ return rmiCommunicator; }
-		else if (mech == IPCMechanism.GIPC) 	{ return gipcCommunicator; } 
-		return null; 
+		Communicator comm; 
+		switch (mech) {
+			case NIO: comm = nioCommunicator; break;  
+			case RMI: comm = rmiCommunicator; break; 
+			case GIPC: comm = gipcCommunicator; break; 
+			default: return null; 
+		}
+		return comm; 
 	}
 	
 }
