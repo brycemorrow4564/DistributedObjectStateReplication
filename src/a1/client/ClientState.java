@@ -14,34 +14,41 @@ import util.trace.port.PerformanceExperimentStarted;
 public class ClientState extends AnAbstractSimulationParametersBean {
 	
 	protected SimulationClient client; 
-	protected ClientCommunicator communicator; 
 	
-	public ClientState(SimulationClient client, ClientCommunicator communicator) {
+	public ClientState(SimulationClient client) {
 		this.client = client; 
-		this.communicator = communicator; 
+	}
+	
+	public SimulationClient getClient() {
+		return client; 
 	}
 	
 	public void updateSimulationConnectivity() {
-		client.updateSimulationConnectivity(Util.getBroadcastModeFromState());
+		BroadcastMode bMode = Util.getBroadcastModeFromState(); 
+		if (bMode == null) {
+			System.out.println("Error tried to update simulation connectivity but broadcast mode was null");
+		}
+		client.updateSimulationConnectivity(bMode);
 	}
 	
 	@Override
 	public void localProcessingOnly(boolean newValue) {
 		super.localProcessingOnly(newValue);
-		updateSimulationConnectivity();
+		updateSimulationConnectivity(); 
 	}
 	
 	private void handleBroadcastMetaState(BroadcastMode newMode, IPCMechanism newMech) {
 		Message msg = new Message(MsgType.CTS_Proposal);
 		msg.setProposalType(ProposalType.MetaStateChange);
+		msg.setSenderIpcMech(IPCMechanism.RMI);
 		msg.setBModeToSet(newMode);
 		msg.setIpcMechToSet(newMech);
-		communicator.sendMessageToServer(msg);
+		client.getCommunicator().sendMessageToServer(msg);
 	}
 	
 	@Override
 	public void atomicBroadcast(boolean newValue) {
-		if (Util.getBroadcastModeFromState() == null) {
+		if (waiting()) { 
 			return; 
 		}
 		if (ClientStateFactory.getState().isBroadcastMetaState()) { 
@@ -56,9 +63,9 @@ public class ClientState extends AnAbstractSimulationParametersBean {
 
 	@Override
 	public void ipcMechanism(IPCMechanism newMech) {
-		if (Util.getIpcMechanismFromState() == null) {
+		if (waiting())  { 
 			return; 
-		}
+		}  
 		if (ClientStateFactory.getState().isBroadcastMetaState()) {
 			BroadcastMode newMode = Util.getBroadcastModeFromState(); 
 			handleBroadcastMetaState(newMode, newMech);
@@ -67,10 +74,23 @@ public class ClientState extends AnAbstractSimulationParametersBean {
 		}
 	}
 	
+	public boolean waiting() {
+		return Util.getBroadcastModeFromState() == null || Util.getIpcMechanismFromState() == null;
+	}
+	
 	@Override
 	public void simulationCommand(String aCommand) {
 		super.simulationCommand(aCommand);
-		client.getSimulation().setInputString(aCommand); 
+		if (Util.getBroadcastModeFromState() == BroadcastMode.LOCAL) {
+			client.getSimulation().setInputString(aCommand);
+			return; 
+		}
+		if (waiting()) return; 
+		if (aCommand.equals("experiment")) {
+			client.printExperiments();
+		} else {
+			client.getSimulation().setInputString(aCommand); 
+		}
 	}
 
 	@Override
@@ -80,16 +100,7 @@ public class ClientState extends AnAbstractSimulationParametersBean {
 	
 	@Override
 	public void experimentInput() {
-		int numCommands = 1000;
-		String[] commands = Util.generateRandomSimulationCommands(numCommands); 
-		long startTime = (long) System.nanoTime(); 
-		PerformanceExperimentStarted.newCase(this, startTime, 0);
-		for (String c : commands) { simulationCommand(c); }
-		long endTime = (long) System.nanoTime(); 
-		PerformanceExperimentEnded.newCase(this, startTime, endTime, endTime - startTime, 0); 
-		String experimentDescription = "Mode: " + Util.getBroadcastModeFromState().name() + "\nDuration (seconds): " + ((endTime - startTime) / Math.pow(10, 9)); 
-		client.addToExperimentLog(experimentDescription); 
-		System.out.println(experimentDescription);	
+		client.assignment3Experiment();
 	}
-
+	
 }

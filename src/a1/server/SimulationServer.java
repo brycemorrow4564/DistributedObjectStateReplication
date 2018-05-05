@@ -15,8 +15,9 @@ import util.trace.port.rpc.rmi.RMITraceUtility;
 public class SimulationServer {
 	
 	protected ServerCommunicator communicator;
-	protected int gipcPort;  		 
-	protected String registryHost; 	
+	
+	protected String registryHost;
+	protected int gipcPort;  		  	
 	protected int registryPort; 
 	protected int nioPort; 			
 	
@@ -27,6 +28,20 @@ public class SimulationServer {
 		setupTracing(); 
 	}	
 	
+	public ServerCommunicator getCommunicator() { 
+		return communicator; 
+	}
+	
+	private static void setupTracing() {
+		//FactoryTraceUtility.setTracing();
+		//BeanTraceUtility.setTracing();
+//		NIOTraceUtility.setTracing(); 
+//		RMITraceUtility.setTracing();
+//		//ConsensusTraceUtility.setTracing();
+//		ThreadDelayed.enablePrint();
+//		GIPCRPCTraceUtility.setTracing();
+	}
+
 	private void getArgs(String[] args) {
 		gipcPort = ServerArgsProcessor.getGIPCServerPort(args);
 		registryHost = ServerArgsProcessor.getRegistryHost(args); 
@@ -34,20 +49,6 @@ public class SimulationServer {
 		nioPort = ServerArgsProcessor.getServerPort(args);
 	}
 	
-	public ServerCommunicator getCommunicator() { 
-		return communicator; 
-	}
-	
-	private static void setupTracing() {
-		FactoryTraceUtility.setTracing();
-		BeanTraceUtility.setTracing();
-		NIOTraceUtility.setTracing(); 
-		RMITraceUtility.setTracing();
-		ConsensusTraceUtility.setTracing();
-		ThreadDelayed.enablePrint();
-		GIPCRPCTraceUtility.setTracing();
-	}
-
 	public static void main(String[] args) { 
 		args = ServerArgsProcessor.removeEmpty(args); 
 		new SimulationServer(args);

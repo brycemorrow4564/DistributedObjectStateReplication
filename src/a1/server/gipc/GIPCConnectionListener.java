@@ -1,4 +1,4 @@
-package a1.server;
+package a1.server.gipc;
 
 import inputport.ConnectionType;
 import inputport.InputPort;

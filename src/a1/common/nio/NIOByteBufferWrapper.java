@@ -16,15 +16,15 @@ public class NIOByteBufferWrapper {
 	}
 	
 	public ByteBuffer getByteBuffer() {
-		return this.bBuff; 
+		return bBuff; 
 	}
 	
 	public int getLength() {
-		return this.len; 
+		return len; 
 	}
 	
 	public SocketChannel getOriginSocketChannel() {	
-		return this.originChannel;
+		return originChannel;
 	}
 	
 }

@@ -2,6 +2,7 @@ package a1;
 
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
+import java.util.Scanner;
 
 import util.annotations.Tags;
 import util.tags.DistributedTags;
@@ -14,10 +15,11 @@ public class RegistryLauncher {
 	
 	private void createRegistry() {
 		try {
-			int registryPort = 1099; 
-			RMIRegistryCreated.newCase(this, registryPort);
-			LocateRegistry.createRegistry(registryPort);
-		} catch (RemoteException e) {
+			RMIRegistryCreated.newCase(this, 1099);
+			LocateRegistry.createRegistry(1099);
+			Scanner scanner = new Scanner(System.in);
+			while (true) { scanner.nextLine(); }
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}

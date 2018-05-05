@@ -22,7 +22,7 @@ public class ClientStateFactory {
 			return null; 
 		}
 		if (state == null) {
-			state = new ClientState(client, communicator);
+			state = new ClientState(client);
 		}
 		return state;  
 	}

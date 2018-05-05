@@ -1,8 +1,9 @@
-package a1.client;
+package a1.client.nio;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import a1.client.SimulationClient;
 import a1.common.Util;
 import a1.common.InitialConfigurations.BroadcastMode;
 import a1.common.message.Message;
@@ -20,16 +21,12 @@ public class NIOClientCommunicatorProcessor implements Runnable {
 	}
 	
 	private void processMessage(Message msg) {
-		System.out.println("We read this msg from the buffer: " + msg.toString());
-		if (msg.getMsgType() != MsgType.STC_ProposalAcceptRequest) { //NIO does not implement CS consensus 
-			//ProposalExecute received from server. Will always be a simulation command 
-			if (Util.getBroadcastModeFromState() == BroadcastMode.ATOMIC) {
-				client.getSimulation().setConnectedToSimulation(true);
-				client.getSimulation().processCommand(msg.getCommandToExecute());
-				client.getSimulation().setConnectedToSimulation(false);
-			} else {
-				client.getSimulation().processCommand(msg.getCommandToExecute());
-			}
+		if (Util.getBroadcastModeFromState() == BroadcastMode.ATOMIC) {
+			client.getSimulation().setConnectedToSimulation(true);
+			client.getSimulation().processCommand(msg.getCommandToExecute());
+			client.getSimulation().setConnectedToSimulation(false);
+		} else {
+			client.getSimulation().processCommand(msg.getCommandToExecute());
 		}
 	}
 	

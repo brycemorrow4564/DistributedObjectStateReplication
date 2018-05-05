@@ -1,4 +1,4 @@
-package a1.client;
+package a1.client.nio;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -10,6 +10,7 @@ import a1.common.InitialConfigurations;
 import a1.common.Util;
 import a1.common.message.Message.ProposalType;
 import a1.common.message.Message;
+import a1.client.SimulationClient;
 import a1.common.Communicator;
 import a1.common.nio.NIOByteBufferWrapper;
 import assignments.util.MiscAssignmentUtils;
@@ -24,18 +25,16 @@ public class NIOClientCommunicator implements SocketChannelReadListener,
 											 SocketChannelConnectListener, 
 											 Communicator {
 	 
-	private SimulationClient 						client; 
 	private ArrayBlockingQueue<NIOByteBufferWrapper> 	commandQueue;
 	private SocketChannel 							socketChannel; 
 	private Thread 									readProcessorThread;
 	
 	public NIOClientCommunicator(SimulationClient aClient, String aServerHost, int aServerPort) {
-		setFactories();
-		client = aClient;  
+		setFactories(); 
 		commandQueue = new ArrayBlockingQueue<NIOByteBufferWrapper>(AScatterGatherSelectionManager.getMaxOutstandingWrites());
 		socketChannel = createSocketChannel(); 
 		connectToServer(socketChannel, aServerHost, aServerPort);
-		createAndStartReadProcessorThread();  
+		createAndStartReadProcessorThread(aClient);  
 	}
 
 	public void sendMessageToServer(Message msg) {
@@ -44,11 +43,10 @@ public class NIOClientCommunicator implements SocketChannelReadListener,
 	}
 	
 	public void socketChannelRead(SocketChannel aSocketChannel, ByteBuffer aMessage, int aLength) {
-		System.out.println("READ FROM SOCKET CHANNEL ON CLIENT SIDE");
 		try {
 			commandQueue.add(new NIOByteBufferWrapper(MiscAssignmentUtils.deepDuplicate(aMessage), aLength, aSocketChannel)); 	
 		} catch (IllegalStateException e) {
-			System.out.println(e.getMessage());
+			e.printStackTrace();
 		}	
 	}
 
@@ -88,7 +86,7 @@ public class NIOClientCommunicator implements SocketChannelReadListener,
 		ConnectCommandFactorySelector.setFactory(new AReadingWritingConnectCommandFactory());
 	}
 
-	private void createAndStartReadProcessorThread() {
+	private void createAndStartReadProcessorThread(SimulationClient client) {
 		NIOClientCommunicatorProcessor runnable = new NIOClientCommunicatorProcessor(commandQueue, client); 
 		readProcessorThread = new Thread(runnable); 
 		readProcessorThread.setName(InitialConfigurations.READ_THREAD_NAME);  

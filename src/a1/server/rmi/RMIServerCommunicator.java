@@ -1,18 +1,23 @@
-package a1.server;
+package a1.server.rmi;
 
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import a1.common.Communicator;
 import a1.common.Util;
 import a1.common.InitialConfigurations.BroadcastMode;
 import a1.common.message.Message;
-import a1.common.rmi.ADistributedServerRelayer;
-import a1.common.rmi.DistributedClientManager;
-import a1.common.rmi.DistributedServerRelayer;
+import a1.common.message.Message.MsgType;
+import a1.common.message.Message.ProposalType;
+import a1.common.rpc.ADistributedServerRelayer;
+import a1.common.rpc.DistributedClientManager;
+import a1.common.rpc.DistributedServerRelayer;
+import a1.server.ServerCommunicator;
 import util.interactiveMethodInvocation.IPCMechanism;
 import util.trace.port.consensus.ProposalLearnedNotificationSent;
 import util.trace.port.consensus.communication.CommunicationStateNames;
@@ -45,8 +50,8 @@ public class RMIServerCommunicator implements Communicator {
 	private void findRegistry() {
 		try { 
 			RMIRegistryCreated.newCase(this, registryPort); 
-			LocateRegistry.createRegistry(registryPort); 
-			rmiRegistry = LocateRegistry.getRegistry(); 
+			LocateRegistry.createRegistry(registryPort);
+			rmiRegistry = LocateRegistry.getRegistry("localhost", registryPort); 
 			RMIRegistryLocated.newCase(this, registryHost, registryPort, rmiRegistry);
 		} 
 		catch (RemoteException e) { e.printStackTrace(); }
@@ -61,38 +66,6 @@ public class RMIServerCommunicator implements Communicator {
 			RMIObjectRegistered.newCase(this, "ServerRelayer", serverRelayer, rmiRegistry);
 		} catch (RemoteException e) {
 			e.printStackTrace();
-		}
-	}
-	
-	private void traceProposalLearnedNotificationSent(Message outMsg) {
-		if (outMsg.getSenderIPCMechanism() == IPCMechanism.RMI) {
-			String proposalType = "";
-			switch (outMsg.getType()) {
-				case MetaStateChange: 
-					ProposalLearnedNotificationSent.newCase(this, CommunicationStateNames.BROADCAST_MODE, -1, outMsg.getBModeToSet() == BroadcastMode.ATOMIC);
-					ProposalLearnedNotificationSent.newCase(this, CommunicationStateNames.IPC_MECHANISM, -1, outMsg.getIpcMechToSet());
-					break; 
-				case SimulationCommand: 
-					ProposalLearnedNotificationSent.newCase(this, CommunicationStateNames.COMMAND, -1, outMsg.getCommandToExecute());
-					break; 
-				default: 
-			}
-		}
-	}
-	
-	public void sendMessageToClients(Message msg) {
-		traceProposalLearnedNotificationSent(msg);
-		HashMap <String, DistributedClientManager> clientMap = parentCommunicator.getRmiClientManagers(); 
-		for (String id : clientMap.keySet()) {
-			if (msg.getSenderBMode() == BroadcastMode.NON_ATOMIC && msg.getRpcRegistryKey().equals(id)) {
-				continue; //skip origin client in non_atomic mode
-			}	
-			try {
-				util.misc.ThreadSupport.sleep(Util.getSendDelay());
-				clientMap.get(id).passMsgToClient(msg);
-			} catch (RemoteException e) {
-				e.printStackTrace();
-			}
 		}
 	}
 	

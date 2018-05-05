@@ -14,16 +14,11 @@ import util.interactiveMethodInvocation.ConsensusAlgorithm;
 import util.interactiveMethodInvocation.IPCMechanism; 
 
 public class Util {
-	
-	public static long getSendDelay() {
-		return ClientStateFactory.getState().getDelay(); 
-	}
 
 	public static byte[] serializeMessage(Message msg) {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		ObjectOutputStream oos;
 		try { 
-			oos = new ObjectOutputStream(bos); 
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			ObjectOutputStream oos = new ObjectOutputStream(bos); 
 			oos.writeObject(msg); 
 			oos.flush(); 
 			return bos.toByteArray(); 
@@ -41,30 +36,24 @@ public class Util {
 		} catch (Exception e) {}
 	    return null; 
 	}
-
-	public static Message transferMsgProposalValues(Message from, Message to) {
-		to.setBModeToSet(from.getBModeToSet());
-		to.setCommandToExecute(from.getCommandToExecute());
-		to.setIpcMechToSet(from.getIpcMechToSet());
-		return to; 
-	}
 	
 	public static BroadcastMode getBroadcastModeFromState() {
 		ClientState state = ClientStateFactory.getState(); 
-		return 	state == null ? null : (
-					state.isLocalProcessingOnly() ? BroadcastMode.LOCAL : 
-					state.isAtomicBroadcast() ? BroadcastMode.ATOMIC : BroadcastMode.NON_ATOMIC
-				);
+		return state.isAtomicBroadcast() == null ? null : 
+				state.isLocalProcessingOnly() ? BroadcastMode.LOCAL : 
+				state.isAtomicBroadcast() ? BroadcastMode.ATOMIC : BroadcastMode.NON_ATOMIC; 
+	}
+	
+	public static long getSendDelay() {
+		return ClientStateFactory.getState().getDelay(); 
 	}
 	
 	public static IPCMechanism getIpcMechanismFromState() {
-		ClientState state = ClientStateFactory.getState();
-		return state.getIPCMechanism(); 
+		return ClientStateFactory.getState().getIPCMechanism(); 
 	}
 	
 	public static ConsensusAlgorithm getConsensusAlgorithmFromState() {
-		ClientState state = ClientStateFactory.getState();
-		return state.getConsensusAlgorithm(); 
+		return ClientStateFactory.getState().getConsensusAlgorithm(); 
 	}
 	
 	public static String[] generateRandomSimulationCommands(int numCommands) {
@@ -80,12 +69,7 @@ public class Util {
 	}
 	
 	public static int randomIntInRange(int lower, int upper, boolean canBeNegative) { 
-		return ((int) Math.ceil(Math.random() * (upper - lower) + lower)) * 
-				(canBeNegative ? (Math.random() < .5 ? 1 : -1) : 1);
-	}
-	
-	public static String generateRandomClientId() {
-		return Double.toString(Math.random() * Double.MAX_VALUE);		
+		return ((int) Math.ceil(Math.random() * (upper - lower) + lower)) * (canBeNegative ? (Math.random() < .5 ? 1 : -1) : 1);
 	}
 	
 }

@@ -1,4 +1,4 @@
-package a1.client;
+package a1.client.rmi;
 
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -9,11 +9,12 @@ import a1.common.Communicator;
 import a1.common.Util;
 import a1.common.InitialConfigurations.BroadcastMode;
 import a1.common.message.Message;
-import a1.common.rmi.DistributedClientManager;
-import a1.common.rmi.DistributedServerRelayer;
+import a1.common.rpc.DistributedClientManager;
+import a1.common.rpc.DistributedServerRelayer;
 import util.trace.port.consensus.ProposalMade;
 import util.trace.port.consensus.RemoteProposeRequestSent;
 import util.trace.port.rpc.rmi.RMIObjectLookedUp;
+import util.trace.port.rpc.rmi.RMIObjectRegistered;
 import util.trace.port.rpc.rmi.RMIRegistryLocated;
 import util.trace.port.consensus.communication.CommunicationStateNames;
 
@@ -43,25 +44,32 @@ public class RMIClientCommunicator implements Communicator {
 		return clientManagerId; 
 	}
 	
-	private void traceRemoteProposalRequestSend(Message msg) {
-		switch (msg.getType()) {
+	private void traceRemoteSend(Message msg) {
+		switch (msg.getPropType()) {
 			case MetaStateChange: 
 				RemoteProposeRequestSent.newCase(this, CommunicationStateNames.BROADCAST_MODE, -1, msg.getBModeToSet() == BroadcastMode.ATOMIC);
 				RemoteProposeRequestSent.newCase(this, CommunicationStateNames.IPC_MECHANISM, -1, msg.getIpcMechToSet());
 				break;
 			case SimulationCommand: 
 				RemoteProposeRequestSent.newCase(this, CommunicationStateNames.COMMAND, -1, msg.getCommandToExecute());
-				break; 
-			default:
+				break;
 		}
 	}
 	
-	public void sendMessageToServer(Message msg) {
+	private static float traceCounter = 0;
+	
+	public void sendMessageToServer(Message msg) throws Exception {
 		try {
 			msg.setRpcRegistryKey(clientManagerId); 
-			traceRemoteProposalRequestSend(msg); 
-			util.misc.ThreadSupport.sleep(Util.getSendDelay()); 
-			serverRelayer.passMsgToServer(msg);
+			traceRemoteSend(msg); 
+			//util.misc.ThreadSupport.sleep(1);
+			switch (Util.getConsensusAlgorithmFromState()) {
+				case CENTRALIZED_SYNCHRONOUS: 
+					serverRelayer.syncProposeRmi(msg); break;
+				case CENTRALIZED_ASYNCHRONOUS:
+					serverRelayer.asyncProposeRmi(msg); break;
+			}
+			traceCounter += 1; 
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}
@@ -70,7 +78,7 @@ public class RMIClientCommunicator implements Communicator {
 	public void exportObjects() {
 		try {
 			UnicastRemoteObject.exportObject(clientManager, 0);
-			String myId = serverRelayer.rmiClientJoin(clientManager); 
+			String myId = serverRelayer.rmiClientDeposit(clientManager); 
 			this.clientManagerId = myId;
 			System.out.println(clientManagerId + " has registered with the server via RMI");
 		} catch (RemoteException e) {

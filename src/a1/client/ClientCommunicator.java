@@ -1,10 +1,13 @@
 package a1.client;
 
+import a1.client.gipc.GIPCClientCommunicator;
+import a1.client.nio.NIOClientCommunicator;
+import a1.client.rmi.RMIClientCommunicator;
 import a1.common.Communicator;
 import a1.common.message.Message;
 import a1.common.message.Message.MsgType;
-import a1.common.rmi.ADistributedClientManager;
-import a1.common.rmi.DistributedClientManager;
+import a1.common.rpc.ADistributedClientManager;
+import a1.common.rpc.DistributedClientManager;
 import stringProcessors.HalloweenCommandProcessor;
 import util.interactiveMethodInvocation.IPCMechanism;
 
@@ -23,7 +26,8 @@ public class ClientCommunicator {
 	}	
 	
 	public String getRpcId() {
-		return rmiCommunicator.getServerSpecifiedId(); 
+		//This id is the one used by the server to identify this particular client 
+		return rmiCommunicator.getServerSpecifiedId(); //generated via RMI, also used for GIPC 
 	}
 	
 	public void createDistributedObjects(HalloweenCommandProcessor simulation) {
@@ -34,31 +38,36 @@ public class ClientCommunicator {
 		rmiCommunicator.setClientManager(clientManager);
 		gipcCommunicator.setClientManager(clientManager);
 	}
-	
+
 	public void sendMessageToServer(Message msg) {
-		System.out.println("Client sending msg: \n" + msg.toString());
-		if (msg.getMsgType() == MsgType.CTS_Proposal) {
-			IPCMechanism mech = ClientStateFactory.getState().getIPCMechanism(); 
-			switch (mech) {
+		try {
+			switch (msg.getSenderIPCMechanism()) {
 				case NIO: nioCommunicator.sendMessageToServer(msg); break; 
 				case RMI: rmiCommunicator.sendMessageToServer(msg); break; 
 				case GIPC: gipcCommunicator.sendMessageToServer(msg); break; 
-			}
-		} else {
-			//MsgType.CTS_ProposalResponse
-			rmiCommunicator.sendMessageToServer(msg);	
+			}	
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
 	public Communicator getSubCommunicatorOfType(IPCMechanism mech) {
-		Communicator comm; 
 		switch (mech) {
-			case NIO: comm = nioCommunicator; break;  
-			case RMI: comm = rmiCommunicator; break; 
-			case GIPC: comm = gipcCommunicator; break; 
-			default: return null; 
+			case NIO: return nioCommunicator;   
+			case RMI: return rmiCommunicator;
+			case GIPC: return gipcCommunicator; 
+			default: return null;
 		}
-		return comm; 
+	}
+	
+	public void performRpcSetup(HalloweenCommandProcessor simulation) {
+		createDistributedObjects(simulation);
+		notifyRpcCommunicatorsOfDistributedObjects();
+		rmiCommunicator.acquireProxies();
+		rmiCommunicator.exportObjects();
+		gipcCommunicator.setClientManagerId(getRpcId());
+		gipcCommunicator.acquireProxies();
+		gipcCommunicator.exportObjects();
 	}
 	
 }
