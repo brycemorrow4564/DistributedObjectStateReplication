@@ -4,7 +4,6 @@ package examples.rmi.counter;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Properties;
 
 import examples.mvc.rmi.duplex.ADistributedInheritingRMICounter;
 import examples.mvc.rmi.duplex.DistributedRMICounter;
@@ -30,10 +29,11 @@ public class AnRMICounterServer extends CounterServerLauncher {
 			DistributedRMICounter counter2 = new ADistributedInheritingRMICounter();
 			UnicastRemoteObject.exportObject(counter1, 0);
 			UnicastRemoteObject.exportObject(counter2, 0);
-			rmiRegistry.rebind("COUNTER1", counter1);
-			rmiRegistry.rebind("COUNTER2", counter2);	
-			DistributedRMICounter fetchedCounter = (DistributedRMICounter) rmiRegistry.lookup("COUNTER1");
+			rmiRegistry.rebind(COUNTER1, counter1);
+			rmiRegistry.rebind(COUNTER2, counter2);	
+			DistributedRMICounter fetchedCounter = (DistributedRMICounter) rmiRegistry.lookup(COUNTER1);
 			doOperations(counter1, counter2, fetchedCounter);
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}		

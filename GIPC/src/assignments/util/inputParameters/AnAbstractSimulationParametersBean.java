@@ -1,12 +1,15 @@
 package assignments.util.inputParameters;
 
+import consensus.ProposalState;
+import javafx.beans.binding.SetBinding;
 import util.interactiveMethodInvocation.ConsensusAlgorithm;
 import util.interactiveMethodInvocation.IPCMechanism;
 import util.trace.port.consensus.ProposalMade;
+import util.trace.port.consensus.ProposalStateChanged;
 import util.trace.port.consensus.ProposedStateSet;
 import util.trace.port.consensus.communication.CommunicationStateNames;
 
-public abstract class AnAbstractSimulationParametersBean implements  SimulationParametersBean {
+public abstract class AnAbstractSimulationParametersBean implements SimulationParametersBean{
 	protected boolean localProcessingOnly = false;
 	protected boolean broadcastBroadcastMode = false;
 	protected boolean broadcastIPCMechanism = false;
@@ -97,8 +100,8 @@ public abstract class AnAbstractSimulationParametersBean implements  SimulationP
 	@Override
 	public void localProcessingOnly(boolean newValue) {
 		setLocalProcessingOnly(newValue);
+		
 	}
-	
 //	@Override
 	public void broadcastBroadcastMode(boolean newValue) {
 		setBroadcastBroadcastMode(newValue);		

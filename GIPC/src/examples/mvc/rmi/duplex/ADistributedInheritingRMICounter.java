@@ -5,7 +5,7 @@ import java.rmi.RemoteException;
 import examples.mvc.local.duplex.ACounter;
 
 
-public class ADistributedInheritingRMICounter extends ACounter implements DistributedRMICounter {
+public class ADistributedInheritingRMICounter extends ACounter implements DistributedRMICounter{
 	@Override
 	public boolean equals(Object otherObject) {
 		if (!(otherObject instanceof DistributedRMICounter))

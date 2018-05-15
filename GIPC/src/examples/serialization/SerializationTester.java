@@ -1,7 +1,9 @@
 package examples.serialization;
 
+import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -21,11 +23,17 @@ public class SerializationTester {
 	}
 	
 	enum Color {RED,GREEN, BLUE}
+	public static Serializer testSerialization() {
+		Serializer serializer = SerializerSelector.createSerializer();
+		return testSerialization(serializer);
+	}
 
-	public static void testSerialization() {
+	public static Serializer testSerialization(Serializer serializer) {
+		
+		System.out.println ("I*** STARTING TEST SERIALIZATION WITH SERIALIZER:" + serializer);
 		// part 1
 		
-		Serializer serializer = SerializerSelector.createSerializer();
+		
 		translate(serializer, 5);
 		translate(serializer, (short)5);
 		translate(serializer, (long)5);
@@ -44,7 +52,7 @@ public class SerializationTester {
 		translate(serializer, list);
 		list = new Vector();
 		list.add("Hello world");
-		list.add(3);
+		list.add(5);
 		list.add(Color.BLUE);
 		list.add(null);
 		translate(serializer, list);
@@ -54,13 +62,14 @@ public class SerializationTester {
 		translate(serializer, map);
 		map = new Hashtable();
 		map.put("greeting", "ni hao");
-		map.put(5, 4.0);
+		map.put(5, 2.0);
 		translate(serializer, map);
 		Set<String> set = new HashSet();
 		set.add("Hello world");
 		set.add("Goodbye world");
 		translate(serializer, set);
 		list.add(set);
+		map.put("greeting", "namaste");
 		list.add(map);
 		translate(serializer, list);
 		// part 2
@@ -91,17 +100,32 @@ public class SerializationTester {
 		List recursiveList = new ArrayList();
 		recursiveList.add(recursiveList);
 		translate(serializer, recursiveList);
+		System.out.println ("I*** ENDED TEST SERIALIZATION WITH SERIALIZER:" + serializer);
+
+		return serializer;
 
 	}
+	
+	static String toString(Object a) {
+		if (a == null) {
+			return "null";
+		}
+		if (a.getClass().isArray()) {
+			return Arrays.toString((Object[])a);
+		}
+		return a.toString();
+	}
 
-	static void translate(Serializer serializer, Object object) {
+	public static Object translate(Serializer serializer, Object object) {
 		try {
-			System.out.println("Serializing " + object);
+			System.out.println("Serializing " + toString(object));
 			ByteBuffer buffer = serializer.outputBufferFromObject(object);
 			Object readVal = serializer.objectFromInputBuffer(buffer);
-			System.out.println("Deserialized " + readVal);
+			System.out.println("Deserialized " + toString(object.getClass().cast(readVal)));
+			return readVal;
 		} catch (Exception e) {
 			e.printStackTrace();
+			return null;
 		}
 	}
 	//

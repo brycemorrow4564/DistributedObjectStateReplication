@@ -27,7 +27,7 @@ public class AnRMICounterClient extends CounterServerLauncher{
 	}
 	public static void main (String[] args) {	
 		try {
-			Registry rmiRegistry = LocateRegistry.getRegistry(null);
+			Registry rmiRegistry = LocateRegistry.getRegistry();
 
 			DistributedRMICounter counter11 = (DistributedRMICounter) rmiRegistry.lookup(COUNTER1);
 			DistributedRMICounter counter12 = (DistributedRMICounter) rmiRegistry.lookup(COUNTER1);
