@@ -35,7 +35,7 @@ public class SimulationServer {
 	private static void setupTracing() {
 		//FactoryTraceUtility.setTracing();
 		//BeanTraceUtility.setTracing();
-//		NIOTraceUtility.setTracing(); 
+		NIOTraceUtility.setTracing(); 
 //		RMITraceUtility.setTracing();
 //		//ConsensusTraceUtility.setTracing();
 //		ThreadDelayed.enablePrint();
